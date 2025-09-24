@@ -31,15 +31,15 @@
 <body>
   <div class="container">
     <h1>Арабско-русский словарь</h1>
-    <p class="lead">Ищите по арабскому (с огласовками и без) и по-русски. Положите <code>word.txt</code> рядом с этим файлом в репозитории — он подхватится автоматически.</p>
+    <p class="lead">Ищите по арабскому (с огласовками и без) и по-русски. Положите <code>words.txt</code> рядом с этим файлом в репозитории — он подхватится автоматически.</p>
 
     <input id="q" type="search" placeholder="Введите арабское (مثال: بَيْت или بيت) или русское (дом)..." />
 
     <div class="controls">
       <div class="file-input">
-        <label for="file">Загрузить локальный word.txt</label>
+        <label for="file">Загрузить локальный words.txt</label>
         <input id="file" type="file" accept=".txt" />
-        <button id="reload">Загрузить / Перезагрузить из /word.txt</button>
+        <button id="reload">Загрузить / Перезагрузить из words.txt</button>
       </div>
       <div style="flex:1"></div>
       <div class="count" id="count">Найдено: 0</div>
@@ -48,7 +48,7 @@
     <ul class="results" id="results"></ul>
 
     <div class="footer">
-      <div class="muted">Форматы в word.txt (одна запись на строку):</div>
+      <div class="muted">Форматы в words.txt (одна запись на строку):</div>
       <ul>
         <li><code>Русский(перевод) - арабский_с_огласовками - арабский_без</code> — пример: <code>дом(house) - بَيْت - بيت</code></li>
         <li><code>ru|gloss|ar1|ar2|note</code> — pipe-разделитель: <code>кот|cat|قِطّ|قط|животное</code></li>
@@ -221,16 +221,17 @@ function openModal(item) {
 
 function closeModal() { modalEl.style.display = "none"; modalEl.innerHTML = ""; }
 
-/* load word.txt from server */
+/* load words.txt from server */
 async function loadFromServer() {
   try {
-    const res = await fetch("/word.txt", { cache: "no-store" });
+    // <-- use relative path 'words.txt' so it works when site is hosted at /repo-name/
+    const res = await fetch("words.txt", { cache: "no-store" });
     if (!res.ok) throw new Error("not found");
     const txt = await res.text();
     entries = parseWordText(txt);
     renderList(entries);
   } catch (e) {
-    console.warn("Не удалось загрузить /word.txt:", e);
+    console.warn("Не удалось загрузить words.txt:", e);
     // fallback examples
     const fallback = [
       "дом(house) - بَيْت - بيت",
