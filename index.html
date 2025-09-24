@@ -69,4 +69,147 @@ function escapeHtml(s) {
 
 /* ===== parser ===== */
 function parseWordText(txt) {
-  const lines = txt.spl
+  const lines = txt.split(/\r?\n/);
+  const parsed = [];
+  let id = 1;
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line || line.startsWith("#")) continue;
+    let ru = "", gloss = "", ar1 = "", ar2 = "", note = "";
+
+    if (line.includes("|")) {
+      const parts = line.split("|").map(s => s.trim());
+      ru = parts[0] || "";
+      gloss = parts[1] || "";
+      ar1 = parts[2] || "";
+      ar2 = parts[3] || ar1 || "";
+      note = parts[4] || "";
+    } else if (line.includes(" - ")) {
+      const parts = line.split(" - ").map(s => s.trim());
+      const m = parts[0].match(/^(.+?)\s*\((.+)\)\s*$/);
+      if (m) { ru = m[1].trim(); gloss = m[2].trim(); } else { ru = parts[0]; }
+      ar1 = parts[1] || "";
+      ar2 = parts[2] || removeArabicDiacritics(ar1);
+    } else {
+      const p = line.split(/\t+/).map(s => s.trim());
+      ru = p[0] || line;
+      ar1 = p[1] || "";
+      ar2 = p[2] || ar1 || "";
+    }
+
+    parsed.push({
+      id: id++,
+      ru, gloss, ar1, ar2, note,
+      _ar1_norm: normalizeArabic(ar1),
+      _ar2_norm: normalizeArabic(ar2),
+      _ru_norm: normalizeRussian(ru + (gloss ? ` (${gloss})` : ""))
+    });
+  }
+  return parsed;
+}
+
+/* ===== app ===== */
+const qEl = document.getElementById("q");
+const resultsEl = document.getElementById("results");
+const countEl = document.getElementById("count");
+const modalEl = document.getElementById("modal");
+
+let entries = [];
+
+function renderList(list) {
+  resultsEl.innerHTML = "";
+  for (const r of list) {
+    const showAr2 = r.ar2 && (normalizeArabic(r.ar1) !== normalizeArabic(r.ar2));
+    const li = document.createElement("li");
+    li.className = "item";
+    li.tabIndex = 0;
+    li.innerHTML = `<div>
+                      <div class="ru">${escapeHtml(r.ru)}${r.gloss ? ' <small>(' + escapeHtml(r.gloss) + ')</small>' : ''}</div>
+                      <div class="ar">${escapeHtml(r.ar1)}${showAr2 ? ' — ' + escapeHtml(r.ar2) : ''}</div>
+                    </div>
+                    <div style="font-size:13px;color:#64748b">Подробнее →</div>`;
+    li.addEventListener("click", () => openModal(r));
+    resultsEl.appendChild(li);
+  }
+  countEl.textContent = "Найдено: " + list.length;
+}
+
+function search(q) {
+  const qq = q.trim();
+  if (!qq) return entries.slice();
+  const qRu = normalizeRussian(qq);
+  const qAr = normalizeArabic(qq);
+
+  return entries.filter(e => {
+    if (isCyrillic(qq)) return e._ru_norm.includes(qRu);
+    if (qAr && e._ar1_norm.includes(qAr)) return true;
+    if (qAr && e._ar2_norm.includes(qAr)) return true;
+    if (e._ru_norm.includes(qRu)) return true;
+    if (e.ar1 && e.ar1.includes(qq)) return true;
+    if (e.ar2 && e.ar2.includes(qq)) return true;
+    return false;
+  });
+}
+
+/* modal */
+function openModal(item) {
+  modalEl.style.display = "block";
+  const showAr2 = item.ar2 && (normalizeArabic(item.ar1) !== normalizeArabic(item.ar2));
+  modalEl.innerHTML = `<div class="modal" id="modalWrap">
+    <div class="card">
+      <button id="closeBtn" style="float:right">Закрыть</button>
+      <h2 style="margin-top:4px">${escapeHtml(item.ru)} ${item.gloss ? '(' + escapeHtml(item.gloss) + ')' : ''}</h2>
+      <div style="margin-top:8px">Арабский: <div class="ar">${escapeHtml(item.ar1)}</div></div>
+      ${showAr2 ? `<div style="margin-top:8px">Арабский (вариант): <div class="ar">${escapeHtml(item.ar2)}</div></div>` : ''}
+      ${item.note ? '<div class="note">Примечание: ' + escapeHtml(item.note) + '</div>' : ''}
+      <div style="margin-top:12px">
+        <button id="copyBtn">Копировать</button>
+        <button id="searchArBtn">Поиск по арабскому</button>
+      </div>
+    </div>
+  </div>`;
+  document.getElementById("closeBtn").addEventListener("click", closeModal);
+  document.getElementById("copyBtn").addEventListener("click", async () => {
+    const txt = `${item.ru}${item.gloss ? ' (' + item.gloss + ')' : ''} - ${item.ar1}` + (showAr2 ? ` - ${item.ar2}` : '');
+    try { await navigator.clipboard.writeText(txt); alert("Скопировано в буфер."); } catch(e) { alert("Не удалось скопировать."); }
+  });
+  document.getElementById("searchArBtn").addEventListener("click", () => {
+    qEl.value = item.ar1;
+    qEl.dispatchEvent(new Event("input", { bubbles:true }));
+    closeModal();
+  });
+  modalEl.addEventListener("click", (ev) => { if (ev.target.id === "modalWrap") closeModal(); });
+}
+function closeModal() { modalEl.style.display = "none"; modalEl.innerHTML = ""; }
+
+/* load words.txt */
+async function loadFromServer() {
+  try {
+    const res = await fetch("words.txt", { cache: "no-store" });
+    if (!res.ok) throw new Error("not found");
+    const txt = await res.text();
+    entries = parseWordText(txt);
+    renderList(entries);
+  } catch (e) {
+    console.warn("Не удалось загрузить words.txt:", e);
+    const fallback = [
+      "дом(house) - بَيْت - بيت",
+      "писать(to write) - كَتَبَ - كتب",
+      "кот|cat|قِطّ|قط|животное"
+    ].join("\n");
+    entries = parseWordText(fallback);
+    renderList(entries);
+  }
+}
+
+/* events */
+qEl.addEventListener("input", (ev) => {
+  const list = search(ev.target.value);
+  renderList(list);
+});
+
+/* init */
+loadFromServer();
+</script>
+</body>
+</html>
