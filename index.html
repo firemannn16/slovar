@@ -3,37 +3,26 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Арабско-русский словарь</title>
-
-  <script defer src="https://cloud.umami.is/script.js" data-website-id="978e563f-ae7b-421e-ade1-b5773da3feb8"></script>
-  
-  <!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-3GJ9WT3YKQ"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'G-3GJ9WT3YKQ');
-</script>
-  
+<title>Арабско-русский словарь — оптимизировано</title>
 <style>
-  body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:#f3f4f6; margin:0; padding:24px; color:#0f172a }
-  .container { max-width:900px; margin:0 auto; background:#fff; padding:20px; border-radius:12px; box-shadow:0 8px 30px rgba(2,6,23,0.08) }
-  h1 { margin:0 0 8px 0; font-size:20px }
-  p.lead { margin:0 0 16px 0; color:#475569; font-size:13px }
+  body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial; background:#f3f4f6; margin:0; padding:24px; color:#0f172a }
+  .container { max-width:960px; margin:0 auto; background:#fff; padding:20px; border-radius:12px; box-shadow:0 8px 30px rgba(2,6,23,0.08) }
+  h1 { margin:0 0 8px 0; font-size:22px }
+  p.lead { margin:0 0 12px 0; color:#475569; font-size:14px }
   input[type="search"] { width:100%; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0; font-size:16px; box-sizing:border-box }
-  .count { color:#64748b; font-size:13px; margin-top:12px; text-align:right }
-  ul.results { list-style:none; padding:0; margin:12px 0 0 0; display:grid; gap:8px }
+  .count { color:#64748b; font-size:13px; margin-top:10px; text-align:right }
+  ul.results { list-style:none; padding:0; margin:12px 0 0 0; display:grid; gap:8px; max-height:70vh; overflow:auto }
   li.item { padding:12px; border-radius:10px; border:1px solid #e6eef8; background:#fbfdff; cursor:pointer; display:flex; justify-content:space-between; align-items:center }
   li.item:hover { box-shadow:0 6px 18px rgba(2,6,23,0.06) }
   .ru { font-weight:600 }
   .ar { margin-top:6px; font-size:18px; direction:rtl; text-align:right }
   .modal { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(2,6,23,0.5) }
-  .card { background:#fff; padding:18px; border-radius:10px; max-width:720px; width:94% }
+  .card { background:#fff; padding:18px; border-radius:10px; max-width:820px; width:94% }
   .note { color:#475569; margin-top:8px; font-size:13px }
-  .muted { color:#94a3b8; font-size:12px; margin-top:14px }
-  button { padding:8px 12px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; cursor:pointer }
+  .hint { color:#94a3b8; font-size:13px }
+  .btn { padding:8px 12px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; cursor:pointer }
+  .small-notify { position:fixed; right:20px; bottom:20px; background:#0f172a; color:#fff; padding:8px 12px; border-radius:8px; opacity:0.95; display:none; z-index:9999 }
+  .show-more { text-align:center; margin:8px 0; }
 </style>
 </head>
 <body>
@@ -41,16 +30,21 @@
     <h1>Арабско-русский словарь</h1>
     <p class="lead">Поиск по арабскому и по-русски. Нажмите на результат, чтобы открыть подробности.</p>
 
-    <input id="q" type="search" placeholder="Введите арабское (مثال: بَيْت или بيت) или русское (дом)..." />
+    <input id="q" type="search" placeholder="Введите арабское (مثال: بَيْت или بيت) или русское (дом)..." autocomplete="off" />
 
     <div class="count" id="count">Найдено: 0</div>
 
-    <ul class="results" id="results"></ul>
+    <ul class="results" id="results" aria-live="polite"></ul>
 
-    <div class="muted"></div>
+    <div class="show-more" id="showMoreWrap" style="display:none">
+      <button id="showMoreBtn" class="btn">Показать ещё</button>
+    </div>
+
+    <div class="hint" id="statusHint" style="display:none; margin-top:12px;"></div>
   </div>
 
   <div id="modal" style="display:none"></div>
+  <div id="notify" class="small-notify">Скопировано</div>
 
 <script>
 /* ===== utils ===== */
@@ -79,8 +73,15 @@ function escapeHtml(s) {
   if (!s) return "";
   return s.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 }
+function debounce(fn, ms) {
+  let t;
+  return function(...args) {
+    clearTimeout(t);
+    t = setTimeout(() => fn.apply(this, args), ms);
+  };
+}
 
-/* ===== parser ===== */
+/* ===== parser & data ===== */
 function parseWordText(txt) {
   const lines = txt.split(/\r?\n/);
   const parsed = [];
@@ -121,18 +122,31 @@ function parseWordText(txt) {
   return parsed;
 }
 
-/* ===== app ===== */
+/* ===== app state ===== */
 const qEl = document.getElementById("q");
 const resultsEl = document.getElementById("results");
 const countEl = document.getElementById("count");
 const modalEl = document.getElementById("modal");
+const notifyEl = document.getElementById("notify");
+const showMoreWrap = document.getElementById("showMoreWrap");
+const showMoreBtn = document.getElementById("showMoreBtn");
+const statusHint = document.getElementById("statusHint");
 
-let entries = [];
+let entries = [];          // full parsed data
+let lastQuery = "";        // last processed query (for cache)
+let lastResults = [];      // last results array
+let renderLimit = 200;     // how many items to render initially
+let currentRenderCount = 0;
 
-function renderList(list) {
+/* ===== rendering ===== */
+function renderListPartial(list, limit = renderLimit) {
+  // Efficient rendering using DocumentFragment
   resultsEl.innerHTML = "";
-  for (const r of list) {
-    const showAr2 = r.ar2 && (normalizeArabic(r.ar1) !== normalizeArabic(r.ar2));
+  const frag = document.createDocumentFragment();
+  const count = Math.min(list.length, limit);
+  for (let i = 0; i < count; i++) {
+    const r = list[i];
+    const showAr2 = r.ar2 && (r._ar1_norm !== r._ar2_norm);
     const li = document.createElement("li");
     li.className = "item";
     li.tabIndex = 0;
@@ -142,49 +156,103 @@ function renderList(list) {
                     </div>
                     <div style="font-size:13px;color:#64748b">Подробнее →</div>`;
     li.addEventListener("click", () => openModal(r));
-    resultsEl.appendChild(li);
+    frag.appendChild(li);
   }
+  resultsEl.appendChild(frag);
+  currentRenderCount = count;
   countEl.textContent = "Найдено: " + list.length;
+  if (list.length > count) {
+    showMoreWrap.style.display = "block";
+  } else {
+    showMoreWrap.style.display = "none";
+  }
 }
 
-function search(q) {
+function appendMore(list, add = renderLimit) {
+  const start = currentRenderCount;
+  const end = Math.min(list.length, currentRenderCount + add);
+  const frag = document.createDocumentFragment();
+  for (let i = start; i < end; i++) {
+    const r = list[i];
+    const showAr2 = r.ar2 && (r._ar1_norm !== r._ar2_norm);
+    const li = document.createElement("li");
+    li.className = "item";
+    li.tabIndex = 0;
+    li.innerHTML = `<div>
+                      <div class="ru">${escapeHtml(r.ru)}${r.gloss ? ' <small>(' + escapeHtml(r.gloss) + ')</small>' : ''}</div>
+                      <div class="ar">${escapeHtml(r.ar1)}${showAr2 ? ' — ' + escapeHtml(r.ar2) : ''}</div>
+                    </div>
+                    <div style="font-size:13px;color:#64748b">Подробнее →</div>`;
+    li.addEventListener("click", () => openModal(r));
+    frag.appendChild(li);
+  }
+  resultsEl.appendChild(frag);
+  currentRenderCount = end;
+  if (currentRenderCount >= list.length) showMoreWrap.style.display = "none";
+}
+
+/* ===== search logic (fast) ===== */
+function performSearch(q) {
   const qq = q.trim();
-  if (!qq) return entries.slice();
+  if (qq === lastQuery) return lastResults; // cache hit
+  lastQuery = qq;
+  if (!qq) {
+    lastResults = entries.slice();
+    return lastResults;
+  }
+
   const qRu = normalizeRussian(qq);
   const qAr = normalizeArabic(qq);
+  const res = [];
 
-  return entries.filter(e => {
-    if (isCyrillic(qq)) return e._ru_norm.includes(qRu);
-    if (qAr && e._ar1_norm.includes(qAr)) return true;
-    if (qAr && e._ar2_norm.includes(qAr)) return true;
-    if (e._ru_norm.includes(qRu)) return true;
-    if (e.ar1 && e.ar1.includes(qq)) return true;
-    if (e.ar2 && e.ar2.includes(qq)) return true;
-    return false;
-  });
+  const useCyr = isCyrillic(qq);
+
+  // loop entries — optimized: simple checks and pushing
+  for (let i = 0; i < entries.length; i++) {
+    const e = entries[i];
+    if (useCyr) {
+      if (e._ru_norm.includes(qRu)) res.push(e);
+      continue;
+    }
+    if (qAr && (e._ar1_norm.includes(qAr) || e._ar2_norm.includes(qAr))) {
+      res.push(e);
+      continue;
+    }
+    if (e._ru_norm.includes(qRu)) {
+      res.push(e);
+      continue;
+    }
+    // also allow direct substring match on original fields (for diacritics)
+    if ((e.ar1 && e.ar1.includes(qq)) || (e.ar2 && e.ar2.includes(qq))) {
+      res.push(e);
+    }
+  }
+
+  lastResults = res;
+  return res;
 }
 
-/* modal */
+/* ===== modal & copy notify ===== */
 function openModal(item) {
   modalEl.style.display = "block";
-  const showAr2 = item.ar2 && (normalizeArabic(item.ar1) !== normalizeArabic(item.ar2));
+  const showAr2 = item.ar2 && (item._ar1_norm !== item._ar2_norm);
   modalEl.innerHTML = `<div class="modal" id="modalWrap">
-    <div class="card">
-      <button id="closeBtn" style="float:right">Закрыть</button>
+    <div class="card" role="dialog" aria-modal="true">
+      <button id="closeBtn" style="float:right" class="btn">Закрыть</button>
       <h2 style="margin-top:4px">${escapeHtml(item.ru)} ${item.gloss ? '(' + escapeHtml(item.gloss) + ')' : ''}</h2>
       <div style="margin-top:8px">Арабский: <div class="ar">${escapeHtml(item.ar1)}</div></div>
       ${showAr2 ? `<div style="margin-top:8px">Арабский (вариант): <div class="ar">${escapeHtml(item.ar2)}</div></div>` : ''}
       ${item.note ? '<div class="note">Примечание: ' + escapeHtml(item.note) + '</div>' : ''}
       <div style="margin-top:12px">
-        <button id="copyBtn">Копировать</button>
-        <button id="searchArBtn">Поиск по арабскому</button>
+        <button id="copyBtn" class="btn">Копировать</button>
+        <button id="searchArBtn" class="btn">Поиск по арабскому</button>
       </div>
     </div>
   </div>`;
   document.getElementById("closeBtn").addEventListener("click", closeModal);
   document.getElementById("copyBtn").addEventListener("click", async () => {
     const txt = `${item.ru}${item.gloss ? ' (' + item.gloss + ')' : ''} - ${item.ar1}` + (showAr2 ? ` - ${item.ar2}` : '');
-    try { await navigator.clipboard.writeText(txt); alert("Скопировано в буфер."); } catch(e) { alert("Не удалось скопировать."); }
+    try { await navigator.clipboard.writeText(txt); showTemporaryNotify("Скопировано"); } catch(e) { showTemporaryNotify("Не удалось скопировать"); }
   });
   document.getElementById("searchArBtn").addEventListener("click", () => {
     qEl.value = item.ar1;
@@ -194,34 +262,68 @@ function openModal(item) {
   modalEl.addEventListener("click", (ev) => { if (ev.target.id === "modalWrap") closeModal(); });
 }
 function closeModal() { modalEl.style.display = "none"; modalEl.innerHTML = ""; }
+function showTemporaryNotify(text) {
+  notifyEl.textContent = text;
+  notifyEl.style.display = "block";
+  setTimeout(() => { notifyEl.style.display = "none"; }, 1500);
+}
 
-/* load words.txt */
+/* ===== loading and init ===== */
 async function loadFromServer() {
   try {
     const res = await fetch("words.txt", { cache: "no-store" });
     if (!res.ok) throw new Error("not found");
     const txt = await res.text();
     entries = parseWordText(txt);
-    renderList(entries);
+    // initial render
+    lastQuery = "";
+    lastResults = entries.slice();
+    renderListPartial(lastResults);
+    statusHint.style.display = "none";
   } catch (e) {
     console.warn("Не удалось загрузить words.txt:", e);
+    statusHint.textContent = "Не удалось загрузить words.txt — загружены примеры.";
+    statusHint.style.display = "block";
     const fallback = [
       "дом(house) - بَيْت - بيت",
       "писать(to write) - كَتَبَ - كتب",
       "кот|cat|قِطّ|قط|животное"
     ].join("\n");
     entries = parseWordText(fallback);
-    renderList(entries);
+    lastQuery = "";
+    lastResults = entries.slice();
+    renderListPartial(lastResults);
   }
 }
 
-/* events */
+/* ===== events ===== */
+const doSearchDebounced = debounce(() => {
+  const list = performSearch(qEl.value);
+  // render first page
+  renderListPartial(list);
+  // scroll results to top for better UX
+  if (resultsEl) resultsEl.scrollTop = 0;
+}, 200);
+
 qEl.addEventListener("input", (ev) => {
-  const list = search(ev.target.value);
-  renderList(list);
+  doSearchDebounced();
 });
 
-/* init */
+// show more handler
+showMoreBtn.addEventListener("click", () => {
+  const list = lastResults;
+  appendMore(list, renderLimit); // append next chunk
+});
+
+// keyboard: Enter focuses first result (useful when many results)
+qEl.addEventListener("keydown", (ev) => {
+  if (ev.key === "Enter") {
+    const first = resultsEl.querySelector(".item");
+    if (first) first.focus();
+  }
+});
+
+// init
 loadFromServer();
 </script>
 </body>
