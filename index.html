@@ -1,629 +1,333 @@
 <!doctype html>
 <html lang="ru">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Тренажёр арабских слов — обновлённый</title>
-<script defer src="https://cloud.umami.is/script.js" data-website-id="eb716e2e-5303-4a59-b38a-f4fd1d6d552a"></script>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Арабско-русский словарь — оптимизировано</title>
+
+<script defer src="https://cloud.umami.is/script.js" data-website-id="978e563f-ae7b-421e-ade1-b5773da3feb8"></script>
+  
 <style>
-  body{font-family:Arial,Helvetica,sans-serif;margin:18px;color:#111;background:#fff;max-width:980px}
-  .dua{background:#fff;padding:14px;border-radius:10px;border:1px solid #eee;margin-bottom:12px}
-  .arab{direction:rtl;font-size:2.2rem;font-weight:700;margin:8px 0;text-align:center}
-  #arabic{direction:rtl;font-size:2.6rem;text-align:center;min-height:3.6em;padding:14px;border-radius:8px;border:1px solid #eee}
-  .controls{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:12px}
-  .controls-vertical{display:block;text-align:center;margin-top:10px}
-  .controls-vertical .controls{justify-content:center}
-  button{padding:10px 12px;border-radius:8px;border:1px solid #ccc;background:#f6f6f6;cursor:pointer}
-  .btn-primary{background:#e6fff0;border-color:#b6f0c7}
-  .btn-danger{background:#fff0f0;border-color:#f0b6b6}
-  .small{font-size:0.95rem;color:#666;margin-top:8px;text-align:center}
-  .hidden{display:none}
-  input[type="text"]{width:100%;padding:10px;border-radius:8px;border:1px solid #ddd;box-sizing:border-box}
-  .stats{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-bottom:8px}
-  .stat{background:#fafafa;padding:8px 12px;border-radius:8px;border:1px solid #f0f0f0}
-  .overlay{position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;z-index:9999}
-  .modal{background:#fff;padding:16px;border-radius:8px;max-width:720px;width:92%;box-shadow:0 8px 30px rgba(0,0,0,0.2)}
-  .modal .pair{margin-top:8px}
+  body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial; background:#f3f4f6; margin:0; padding:24px; color:#0f172a }
+  .container { max-width:960px; margin:0 auto; background:#fff; padding:20px; border-radius:12px; box-shadow:0 8px 30px rgba(2,6,23,0.08) }
+  h1 { margin:0 0 8px 0; font-size:22px }
+  p.lead { margin:0 0 12px 0; color:#475569; font-size:14px }
+  input[type="search"] { width:100%; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0; font-size:16px; box-sizing:border-box }
+  .count { color:#64748b; font-size:13px; margin-top:10px; text-align:right }
+  ul.results { list-style:none; padding:0; margin:12px 0 0 0; display:grid; gap:8px; max-height:70vh; overflow:auto }
+  li.item { padding:12px; border-radius:10px; border:1px solid #e6eef8; background:#fbfdff; cursor:pointer; display:flex; justify-content:space-between; align-items:center }
+  li.item:hover { box-shadow:0 6px 18px rgba(2,6,23,0.06) }
+  .ru { font-weight:600 }
+  .ar { margin-top:6px; font-size:18px; direction:rtl; text-align:right }
+  .modal { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(2,6,23,0.5) }
+  .card { background:#fff; padding:18px; border-radius:10px; max-width:820px; width:94% }
+  .note { color:#475569; margin-top:8px; font-size:13px }
+  .hint { color:#94a3b8; font-size:13px }
+  .btn { padding:8px 12px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; cursor:pointer }
+  .small-notify { position:fixed; right:20px; bottom:20px; background:#0f172a; color:#fff; padding:8px 12px; border-radius:8px; opacity:0.95; display:none; z-index:9999 }
+  .show-more { text-align:center; margin:8px 0; }
 </style>
 </head>
 <body>
-  <h1>Тренажёр арабских слов</h1>
-  <div id="screen-dua" class="dua">
-    <div><strong>Перед началом тренировок</strong></div>
-    <div class="arab">رَّبِّ زِدْنِى عِلْمًۭا</div>
-    <div style="text-align:center;margin-top:6px">Перевод: «Господь мой! Приумножь мои знания»</div>
-    <div style="text-align:center;margin-top:12px">
-      <button id="btn-done-dua">Я сделал дуа</button>
+  <div class="container">
+    <h1>Арабско-русский словарь</h1>
+    <p class="lead">Поиск по арабскому и по-русски. Нажмите на результат, чтобы открыть подробности.</p>
+
+    <input id="q" type="search" placeholder="Введите арабское (مثال: بَيْت или بيت) или русское (дом)..." autocomplete="off" />
+
+    <div class="count" id="count">Найдено: 0</div>
+
+    <ul class="results" id="results" aria-live="polite"></ul>
+
+    <div class="show-more" id="showMoreWrap" style="display:none">
+      <button id="showMoreBtn" class="btn">Показать ещё</button>
     </div>
+
+    <div class="hint" id="statusHint" style="display:none; margin-top:12px;"></div>
   </div>
-  <div id="screen-main" class="hidden">
-    <div class="stats">
-      <div class="stat">Всего: <span id="stat-total">0</span></div>
-      <div class="stat">Оконч. выучено: <span id="stat-mastered">0</span></div>
-      <div class="stat">В очереди: <span id="stat-remaining">0</span></div>
-      <div class="stat">Фаза: <span id="stat-phase">—</span></div>
-    </div>
-    <div id="arabic">…</div>
-<!-- первая строка: Знаю / Не знаю -->
-<div id="learn-controls" class="controls">
-  <button id="btn-know" class="btn-primary">Знаю</button>
-  <button id="btn-dont">Не знаю</button>
-</div>
-<!-- вторая строка: Сброс и Добавить -->
-<div class="controls-vertical">
-  <div class="controls">
-    <button id="btn-reset" class="btn-danger">Сбросить прогресс</button>
-    <button id="btn-add">Добавить новые слова</button>
-  </div>
-</div>
-<div id="practice-area" class="hidden" style="margin-top:12px">
-  <div style="margin-bottom:8px"><strong>Практика — введите перевод на русском:</strong></div>
-  <input id="practice-input" type="text" autocomplete="off" placeholder="Введите перевод" />
-  <div class="controls" style="margin-top:8px">
-    <button id="practice-submit">Проверить</button>
-    <button id="practice-skip">Пропустить</button>
-    <button id="practice-oral" class="hidden">Ответил устно</button>
-  </div>
-</div>
-<div id="message" class="small" style="margin-top:12px"></div>
-  </div>
-  <div id="modal-root"></div>
+
+  <div id="modal" style="display:none"></div>
+  <div id="notify" class="small-notify">Скопировано</div>
+
 <script>
-/* ---------- Настройки ---------- */
-const BATCH_SIZE = 10;
-const SHOW_ANSWER_MS = 15000;
-const STORAGE_KEY = (() => {
-  const p = (location.pathname||'/').replace(/^\/|\/$/g,'').replace(/\//g,'_') || 'root';
-  return `arabic_trainer_state_v1_${encodeURIComponent(location.hostname + '_' + p)}`;
-})();
-/* ---------- Состояние ---------- */
-let allWords = [];
-let orderQueue = [];
-let masteredFinal = [];
-let practiceHistory = [];
-let roundMastered = [];
-let practiceAccum = [];
-let practiceOrder = [];
-let phase = 'learn';
-let currentRaw = null;
-let modalTimer = null;
-/* ---------- DOM ---------- */
-const screenDua = document.getElementById('screen-dua');
-const screenMain = document.getElementById('screen-main');
-const btnDoneDua = document.getElementById('btn-done-dua');
-const statTotal = document.getElementById('stat-total');
-const statMastered = document.getElementById('stat-mastered');
-const statRemaining = document.getElementById('stat-remaining');
-const statPhase = document.getElementById('stat-phase');
-const arabicDiv = document.getElementById('arabic');
-const learnControls = document.getElementById('learn-controls');
-const btnKnow = document.getElementById('btn-know');
-const btnDont = document.getElementById('btn-dont');
-const btnAdd = document.getElementById('btn-add');
-const btnReset = document.getElementById('btn-reset');
-const messageDiv = document.getElementById('message');
-const practiceArea = document.getElementById('practice-area');
-const practiceInput = document.getElementById('practice-input');
-const practiceSubmit = document.getElementById('practice-submit');
-const practiceSkip = document.getElementById('practice-skip');
-const practiceOral = document.getElementById('practice-oral');
-const modalRoot = document.getElementById('modal-root');
-/* ---------- Утилиты ---------- */
-function normalizeRu(s){
-  if(!s && s!=='') return '';
-  return String(s).trim().toLowerCase().replace(/ё/g,'е').replace(/\s+/g,' ');
+/* ===== utils ===== */
+function removeArabicDiacritics(text) {
+  if (!text) return "";
+  return text.replace(/[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED]/g, "");
 }
-function normalizeLine(l){ if(!l) return ''; return l.replace(/^\uFEFF/,'').replace(/[\u2010\u2011\u2012\u2013\u2014\u2015–—−]/g,'-').replace(/\s+/g,' ').trim(); }
-function parseLine(raw){
-  raw = normalizeLine(raw);
-  const parts = raw.split(/[-–—]/).map(p=>p.trim()).filter(Boolean);
-  const left = parts.length ? parts[0] : '';
-  const right = parts.slice(1);
-  const rus = left ? left.split(',').map(s=>s.trim()).filter(Boolean) : [];
-  const arabParts = right.length ? right.join(' - ').split(/\s*-\s*/).map(s=>s.trim()).filter(Boolean) : [];
-  return { rawLine: raw, rus, arabParts, arabFull: right.join(' - ') || '' };
+function normalizeArabic(text) {
+  if (!text) return "";
+  let t = text.trim();
+  t = removeArabicDiacritics(t);
+  t = t.replace(/[\u0622\u0623\u0625]/g, "\u0627");
+  t = t.replace(/\u0649/g, "\u064A");
+  t = t.replace(/[\u0624\u0626]/g, "\u0621");
+  t = t.replace(/\u0640/g, "");
+  return t;
 }
-function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } }
-function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"})[c]); }
-/* ---------- НОВАЯ ФУНКЦИЯ: Сравнение слов по содержимому ---------- */
-function getWordContentHash(wordObj) {
-  const arabContent = (wordObj.arabParts || []).join('|');
-  const rusContent = (wordObj.rus || []).join('|');
-  return `${arabContent}|||${rusContent}`;
+function normalizeRussian(text) {
+  if (!text) return "";
+  return text.toLowerCase().trim();
 }
-function findWordByContent(allWords, targetWord) {
-  const targetHash = getWordContentHash(targetWord);
-  return allWords.find(w => getWordContentHash(w) === targetHash);
+function isCyrillic(q) {
+  return /[\u0400-\u04FF]/.test(q);
 }
-/* ---------- last-letter mistake detector ---------- */
-function isLastCharMistake(userRaw, correctRaw){
-  const u = normalizeRu(userRaw||'');
-  const c = normalizeRu(correctRaw||'');
-  if(!u || !c) return false;
-  if(u === c) return false;
-  if(u.length === c.length){
-    if(u.slice(0, -1) === c.slice(0, -1) && u[u.length-1] !== c[c.length-1]) return true;
-  }
-  if(u.length === c.length - 1){
-    if(u === c.slice(0, -1)) return true;
-  }
-  if(u.length === c.length + 1){
-    if(u.slice(0, -1) === c) return true;
-  }
-  return false;
+function escapeHtml(s) {
+  if (!s) return "";
+  return s.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 }
-/* ---------- Save / Load ---------- */
-function saveState(){
-  try{
-    const st = {
-      allRaw: allWords.map(w=>w.rawLine),
-      orderQueue: orderQueue.slice(),
-      masteredFinal: masteredFinal.slice(),
-      practiceHistory: practiceHistory.slice(),
-      roundMastered: roundMastered.slice(),
-      practiceAccum: practiceAccum.slice(),
-      practiceOrder: practiceOrder.slice(),
-      phase, currentRaw
-    };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(st));
-  }catch(e){ console.warn('save failed', e); }
+function debounce(fn, ms) {
+  let t;
+  return function(...args) {
+    clearTimeout(t);
+    t = setTimeout(() => fn.apply(this, args), ms);
+  };
 }
-function loadState(){ try{ const raw = localStorage.getItem(STORAGE_KEY); return raw?JSON.parse(raw):null; }catch(e){return null;} }
-function clearState(){ try{ localStorage.removeItem(STORAGE_KEY);}catch(e){} }
-/* ---------- robust fetch ---------- */
-async function robustFetchWords(){
-  const timestamp = Date.now();
-  const tries = ['words.txt','./words.txt'];
-  try{ tries.push(location.pathname.replace(/\/[^/]*$/,'/') + 'words.txt'); }catch(e){}
-  for(const p of tries){
-    try{ const r = await fetch(p + '?_' + timestamp, {cache: 'no-store'}); if(r.ok) return await r.text(); }catch(e){}
-  }
-  try{
-    const user = location.hostname.split('.')[0] || '';
-    const repo = (location.pathname.split('/').filter(Boolean)[0] || '');
-    if(user && repo){
-      const raw = `https://raw.githubusercontent.com/${user}/${repo}/main/words.txt`;
-      const r = await fetch(raw + '?_' + timestamp, {cache: 'no-store'});
-      if(r.ok) return await r.text();
-    }
-  }catch(e){}
-  throw new Error('Не удалось загрузить words.txt');
-}
-/* ---------- ИСПРАВЛЕННАЯ ФУНКЦИЯ: Инициализация словаря ---------- */
-async function initDictionary(){
-  const txt = await robustFetchWords();
-  const lines = txt.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
-  const serverWords = lines.map(parseLine);
-  const st = loadState();
-  if(st && Array.isArray(st.allRaw) && st.allRaw.length){
-    allWords = st.allRaw.map(raw => {
-      const parsed = parseLine(raw);
-      return { rawLine: raw, ...parsed };
-    });
-    const existingWordsByRaw = new Map();
-    allWords.forEach(w => {
-      existingWordsByRaw.set(w.rawLine, w);
-    });
-    const serverWordsByRaw = new Map();
-    serverWords.forEach(w => {
-      serverWordsByRaw.set(w.rawLine, w);
-    });
-    const serverRawSet = new Set(serverWords.map(w => w.rawLine));
-    allWords = allWords.filter(w => serverRawSet.has(w.rawLine));
-    orderQueue = (Array.isArray(st.orderQueue) ? st.orderQueue.filter(r => serverRawSet.has(r)) : []);
-    masteredFinal = (Array.isArray(st.masteredFinal) ? st.masteredFinal.filter(r => serverRawSet.has(r)) : []);
-    practiceHistory = (Array.isArray(st.practiceHistory) ? st.practiceHistory.filter(r => serverRawSet.has(r)) : []);
-    roundMastered = (Array.isArray(st.roundMastered) ? st.roundMastered.filter(r => serverRawSet.has(r)) : []);
-    practiceAccum = (Array.isArray(st.practiceAccum) ? st.practiceAccum.filter(r => serverRawSet.has(r)) : []);
-    practiceOrder = (Array.isArray(st.practiceOrder) ? st.practiceOrder.filter(r => serverRawSet.has(r)) : []);
-    const changedWords = [];
-    allWords.forEach((existingWord, index) => {
-      if (serverRawSet.has(existingWord.rawLine)) {
-        const serverWord = serverWordsByRaw.get(existingWord.rawLine);
-        if (getWordContentHash(existingWord) !== getWordContentHash(serverWord)) {
-          const updatedWord = { rawLine: serverWord.rawLine, ...serverWord };
-          allWords[index] = updatedWord;
-          changedWords.push(serverWord.rawLine);
-        }
-      }
-    });
-    changedWords.forEach(rawLine => {
-      masteredFinal = masteredFinal.filter(r => r !== rawLine);
-      practiceHistory = practiceHistory.filter(r => r !== rawLine);
-      roundMastered = roundMastered.filter(r => r !== rawLine);
-      practiceAccum = practiceAccum.filter(r => r !== rawLine);
-      practiceOrder = practiceOrder.filter(r => r !== rawLine);
-      if (!orderQueue.includes(rawLine)) {
-        orderQueue.push(rawLine);
-      }
-    });
-    phase = st.phase || 'learn';
-    currentRaw = (st.currentRaw && serverRawSet.has(st.currentRaw)) ? st.currentRaw : null;
-  } else {
-    allWords = serverWords.slice();
-    masteredFinal = []; practiceHistory = []; roundMastered = []; practiceAccum = []; practiceOrder = [];
-    phase = 'learn'; currentRaw = null;
-    orderQueue = allWords.map(w=>w.rawLine);
-    shuffle(orderQueue);
-  }
-  updateStats();
-  saveState();
-}
-/* ---------- UI helpers ---------- */
-function updateStats(){
-  statTotal.textContent = allWords.length;
-  statMastered.textContent = masteredFinal.length;
-  statRemaining.textContent = Array.isArray(orderQueue) ? orderQueue.length : 0;
-  statPhase.textContent = phase === 'learn' ? 'Заучивание' : (phase === 'practice' ? 'Практика' : '—');
-}
-function showMessage(t){ messageDiv.textContent = t || ''; }
-/* ---------- Заучивание ---------- */
-function showNextLearn(){
-  phase = 'learn';
-  learnControls.classList.remove('hidden');
-  practiceArea.classList.add('hidden');
-  updateStats();
-  if(orderQueue.length === 0){
-    if(practiceAccum.length >= BATCH_SIZE){
-      startPractice();
-      return;
-    }
-    arabicDiv.textContent = 'Очередь пуста.';
-    showMessage('Добавьте слова или сбросьте прогресс.');
-    saveState();
-    return;
-  }
-  currentRaw = orderQueue[0];
-  const obj = allWords.find(w=>w.rawLine===currentRaw) || {rawLine:currentRaw, rus:[], arabParts:[], arabFull:''};
-  arabicDiv.textContent = obj.arabFull || (obj.arabParts||[]).join(' - ') || '[нет арабского]';
-  showMessage('Нажмите «Знаю» или «Не знаю».');
-  saveState();
-  updateStats();
-}
-/* ---------- Кнопки заучивания ---------- */
-btnKnow.addEventListener('click', () => {
-  if(!currentRaw) return;
-  orderQueue.shift();
-  if(!roundMastered.includes(currentRaw)) roundMastered.push(currentRaw);
-  if(!practiceAccum.includes(currentRaw)) practiceAccum.push(currentRaw);
-  currentRaw = null;
-  saveState();
-  updateStats();
-  if (practiceAccum.length >= BATCH_SIZE) {
-    startPractice();
-  } else {
-    showNextLearn();
-  }
-});
-btnDont.addEventListener('click', () => {
-  if(!currentRaw) return;
-  orderQueue.shift();
-  if(!practiceAccum.includes(currentRaw)) practiceAccum.push(currentRaw);
-  const obj = allWords.find(w=>w.rawLine===currentRaw) || parseLine(currentRaw);
-  showDontKnowModal(obj);
-  currentRaw = null;
-  saveState();
-  updateStats();
-});
-/* ---------- Modal: "Не знаю" ---------- */
-function showDontKnowModal(obj){
-  closeModal();
-  const overlay = document.createElement('div'); overlay.className='overlay';
-  const modal = document.createElement('div'); modal.className='modal';
-  let html = '';
-  const ar = obj.arabParts && obj.arabParts.length ? obj.arabParts : (obj.arabFull?obj.arabFull.split(/\s*-\s*/).map(s=>s.trim()):[]);
-  if(obj.rus.length && ar.length && obj.rus.length === ar.length){
-    for(let i=0;i<obj.rus.length;i++) html += `<div class="pair">${escapeHtml(obj.rus[i])} — <span style="direction:rtl">${escapeHtml(ar[i])}</span></div>`;
-  } else {
-    const arabAll = ar.join(' - ');
-    for(const r of obj.rus.length?obj.rus:['']) html += `<div class="pair">${escapeHtml(r)} — <span style="direction:rtl">${escapeHtml(arabAll)}</span></div>`;
-  }
-  modal.innerHTML = `<div><strong>Перевод (показывается 15 с)</strong></div><div style="margin-top:8px">${html}</div>`;
-  overlay.appendChild(modal);
-  modalRoot.appendChild(overlay);
-  modalTimer = setTimeout(()=>{
-    closeModal();
-    if(practiceAccum.length >= BATCH_SIZE){
-      startPractice();
+
+/* ===== parser & data ===== */
+function parseWordText(txt) {
+  const lines = txt.split(/\r?\n/);
+  const parsed = [];
+  let id = 1;
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line || line.startsWith("#")) continue;
+    let ru = "", gloss = "", ar1 = "", ar2 = "", note = "";
+
+    if (line.includes("|")) {
+      const parts = line.split("|").map(s => s.trim());
+      ru = parts[0] || "";
+      gloss = parts[1] || "";
+      ar1 = parts[2] || "";
+      ar2 = parts[3] || ar1 || "";
+      note = parts[4] || "";
+    } else if (line.includes(" - ")) {
+      const parts = line.split(" - ").map(s => s.trim());
+      const m = parts[0].match(/^(.+?)\s*\((.+)\)\s*$/);
+      if (m) { ru = m[1].trim(); gloss = m[2].trim(); } else { ru = parts[0]; }
+      ar1 = parts[1] || "";
+      ar2 = parts[2] || removeArabicDiacritics(ar1);
     } else {
-      showNextLearn();
+      const p = line.split(/\t+/).map(s => s.trim());
+      ru = p[0] || line;
+      ar1 = p[1] || "";
+      ar2 = p[2] || ar1 || "";
     }
-  }, SHOW_ANSWER_MS);
-}
-/* ---------- Modal: практика — при ошибке (и для почти-верно) ---------- */
-function showPracticeAnswerModal(obj, title = 'Правильный ответ', autoClose = true, onClose = null){
-  closeModal();
-  const overlay = document.createElement('div'); overlay.className='overlay';
-  const modal = document.createElement('div'); modal.className='modal';
-  let html = '';
-  const ar = obj.arabParts && obj.arabParts.length ? obj.arabParts : (obj.arabFull?obj.arabFull.split(/\s*-\s*/).map(s=>s.trim()):[]);
-  if(obj.rus.length && ar.length && obj.rus.length === ar.length){
-    for(let i=0;i<obj.rus.length;i++) html += `<div class="pair">${escapeHtml(obj.rus[i])} — <span style="direction:rtl">${escapeHtml(ar[i])}</span></div>`;
-  } else {
-    const arabAll = ar.join(' - ');
-    for(const r of obj.rus.length?obj.rus:['']) html += `<div class="pair">${escapeHtml(r)} — <span style="direction:rtl">${escapeHtml(arabAll)}</span></div>`;
-  }
-  modal.innerHTML = `<div><strong>${escapeHtml(title)}</strong></div><div style="margin-top:8px">${html}</div><div style="text-align:right;margin-top:12px"><button id="modal-close" class="button">Закрыть (Esc)</button></div>`;
-  overlay.appendChild(modal);
-  modalRoot.appendChild(overlay);
-  function cleanup(){ if(modalTimer){ clearTimeout(modalTimer); modalTimer=null; } document.removeEventListener('keydown', onKey); overlay.removeEventListener('click', onOverlay); const b=document.getElementById('modal-close'); if(b) b.removeEventListener('click', onBtn); if(overlay.parentNode) overlay.parentNode.removeChild(overlay); practiceInput.focus(); }
-  function onKey(e){ if(e.key==='Escape') onBtn(); }
-  function onOverlay(e){ if(e.target===overlay) onBtn(); }
-  function onBtn(){ cleanup(); if(onClose) onClose(); else showNextPractice(); }
-  document.addEventListener('keydown', onKey);
-  overlay.addEventListener('click', onOverlay);
-  const btn = document.getElementById('modal-close'); if(btn) btn.addEventListener('click', onBtn);
-  if(autoClose) modalTimer = setTimeout(()=>{ onBtn(); }, SHOW_ANSWER_MS);
-}
-/* ---------- Практика: старт, порядок ---------- */
-function startPractice(){
-  phase = 'practice';
-  learnControls.classList.add('hidden');
-  practiceArea.classList.remove('hidden');
-  // ИСПРАВЛЕНИЕ: Формируем practiceOrder правильно
-  // 1. Сначала 10 новых слов из practiceAccum (из фазы заучивания)
-  let newWords = practiceAccum.slice(0, BATCH_SIZE);
-  // 2. Затем ВСЕ слова из masteredFinal (окончательно заученные)
-  let practiceWords = masteredFinal.slice();
-  // 3. Объединяем: сначала новые слова, потом окончательно заученные
-  practiceOrder = newWords.concat(practiceWords);
-  // 4. Перемешиваем только окончательно заученные слова между собой
-  if(practiceWords.length > 1) {
-    const shuffledMastered = practiceWords.slice();
-    shuffle(shuffledMastered);
-    practiceOrder = newWords.concat(shuffledMastered);
-  }
-  // 5. Очищаем practiceAccum (слова теперь в практике)
-  practiceAccum = [];
-  // Сбрасываем накопления для раунда
-  roundMastered = [];
-  saveState();
-  updateStats();
-  showNextPractice();
-}
-/* ---------- showNextPractice ---------- */
-function showNextPractice(){
-  if(!practiceOrder || practiceOrder.length === 0) {
-    // ИСПРАВЛЕНИЕ: Возвращаем неосвоенные слова в orderQueue
-    if(roundMastered.length > 0) {
-      // Слова, которые НЕ были освоены в этом раунде, возвращаем в orderQueue
-      const notMastered = practiceOrder.filter(word => !roundMastered.includes(word));
-      orderQueue = orderQueue.concat(notMastered);
-    }
-    phase = 'learn';
-    learnControls.classList.remove('hidden');
-    practiceArea.classList.add('hidden');
-    saveState();
-    updateStats();
-    showNextLearn();
-    return;
-  }
-  currentRaw = practiceOrder.shift();
-  const obj = allWords.find(w=>w.rawLine===currentRaw) || parseLine(currentRaw);
-  arabicDiv.textContent = obj.arabFull || (obj.arabParts||[]).join(' - ') || '[нет арабского]';
-  practiceInput.value = '';
-  practiceInput.focus();
-  if(masteredFinal.includes(currentRaw)) {
-    practiceOral.classList.remove('hidden');
-  } else {
-    practiceOral.classList.add('hidden');
-  }
-  updateStats();
-}
-/* ---------- Практика: проверка (Enter и кнопка) ---------- */
-function enablePracticeControls(){ practiceSubmit.disabled=false; practiceSkip.disabled=false; practiceOral.disabled=false; practiceInput.disabled=false; practiceInput.focus(); }
-function disablePracticeControls(){ practiceSubmit.disabled=true; practiceSkip.disabled=true; practiceOral.disabled=true; practiceInput.disabled=true; }
-practiceSubmit.addEventListener('click', async () => {
-  if(!currentRaw) return;
-  disablePracticeControls();
-  try{
-    const val = (practiceInput.value||'').trim();
-    if(!val){ enablePracticeControls(); return; }
-    const obj = allWords.find(w=>w.rawLine===currentRaw) || parseLine(currentRaw);
-    const userNorm = normalizeRu(val);
-    const exact = (obj.rus||[]).some(r => normalizeRu(r) === userNorm);
-    const almost = !exact && (obj.rus||[]).some(r => isLastCharMistake(userNorm, normalizeRu(r)));
-    // ИЗМЕНЕНИЕ: Проверяем, является ли текущее слово из masteredFinal
-    const isFromMastered = masteredFinal.includes(currentRaw);
-    if(exact){
-      // Правильный ответ - НЕ возвращаем в practiceOrder, просто переходим к следующему
-      if(!roundMastered.includes(currentRaw)) roundMastered.push(currentRaw);
-      if(!masteredFinal.includes(currentRaw)) masteredFinal.push(currentRaw);
-      if(!practiceHistory.includes(currentRaw)) practiceHistory.push(currentRaw);
-      showMessage('Верно — отмечено как окончательно выученное.');
-      saveState();
-      updateStats();
-      currentRaw = null;
-      enablePracticeControls();
-      showNextPractice();
-    } else if(almost){
-      // Мелкая ошибка - тоже засчитываем, НЕ возвращаем в practiceOrder
-      if(!roundMastered.includes(currentRaw)) roundMastered.push(currentRaw);
-      if(!masteredFinal.includes(currentRaw)) masteredFinal.push(currentRaw);
-      if(!practiceHistory.includes(currentRaw)) practiceHistory.push(currentRaw);
-      saveState();
-      updateStats();
-      showPracticeAnswerModal(obj, 'Мелкая ошибка — засчитано', true);
-      currentRaw = null;
-      enablePracticeControls();
-    } else {
-      // Неправильный ответ
-      if(isFromMastered) {
-        // ИЗМЕНЕНИЕ: Если слово из masteredFinal - не возвращаем в orderQueue
-        // Вместо этого возвращаем его в начало practiceOrder для повторного вопроса
-        practiceOrder.unshift(currentRaw);
-        saveState();
-        updateStats();
-        // Показываем модалку с правильным ответом, после закрытия спрашиваем снова
-        showPracticeAnswerModal(obj, 'Неправильно', true, () => {
-          currentRaw = null;
-          enablePracticeControls();
-          showNextPractice();
-        });
-      } else {
-        // Для слов не из masteredFinal - возвращаем в orderQueue как раньше
-        orderQueue.unshift(currentRaw);
-        // Если это было из masteredFinal - убираем оттуда (но это не должно произойти здесь)
-        if(masteredFinal.includes(currentRaw)) {
-          masteredFinal = masteredFinal.filter(r=>r!==currentRaw);
-          practiceHistory = practiceHistory.filter(r=>r!==currentRaw);
-        }
-        saveState();
-        updateStats();
-        showPracticeAnswerModal(obj, 'Неправильно', true);
-        currentRaw = null;
-        enablePracticeControls();
-      }
-    }
-  }catch(e){ console.error(e); enablePracticeControls(); }
-});
-practiceInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); practiceSubmit.click(); } });
-practiceSkip.addEventListener('click', ()=>{
-  if(!currentRaw) return;
-  // ИЗМЕНЕНИЕ: Проверяем, является ли текущее слово из masteredFinal
-  const isFromMastered = masteredFinal.includes(currentRaw);
-  if(isFromMastered) {
-    // ИЗМЕНЕНИЕ: Если слово из masteredFinal - не возвращаем в orderQueue
-    // Вместо этого возвращаем его в начало practiceOrder для повторного вопроса
-    practiceOrder.unshift(currentRaw);
-    saveState();
-    updateStats();
-    currentRaw = null;
-    showNextPractice();
-  } else {
-    // Для слов не из masteredFinal - возвращаем в orderQueue как раньше
-    orderQueue.unshift(currentRaw);
-    // Если это было из masteredFinal - убираем оттуда (но это не должно произойти здесь)
-    if(masteredFinal.includes(currentRaw)) {
-      masteredFinal = masteredFinal.filter(r => r !== currentRaw);
-      practiceHistory = practiceHistory.filter(r => r !== currentRaw);
-    }
-    saveState();
-    updateStats();
-    currentRaw = null;
-    showNextPractice();
-  }
-});
-practiceOral.addEventListener('click', () => {
-  if(!currentRaw) return;
-  disablePracticeControls();
-  const isFromMastered = masteredFinal.includes(currentRaw);
-  if(!isFromMastered) { enablePracticeControls(); return; }
-  if(!roundMastered.includes(currentRaw)) roundMastered.push(currentRaw);
-  if(!masteredFinal.includes(currentRaw)) masteredFinal.push(currentRaw);
-  if(!practiceHistory.includes(currentRaw)) practiceHistory.push(currentRaw);
-  showMessage('Верно — отмечено как окончательно выученное.');
-  saveState();
-  updateStats();
-  currentRaw = null;
-  enablePracticeControls();
-  showNextPractice();
-});
-/* ---------- ИСПРАВЛЕННАЯ ФУНКЦИЯ: Добавить новые слова (только по кнопке) ---------- */
-btnAdd.addEventListener('click', async () => {
-  try{
-    const txt = await robustFetchWords();
-    const lines = txt.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
-    const serverWords = lines.map(parseLine);
-    const existingByRawLine = new Set();
-    allWords.forEach(w => {
-      existingByRawLine.add(w.rawLine);
+
+    parsed.push({
+      id: id++,
+      ru, gloss, ar1, ar2, note,
+      _ar1_norm: normalizeArabic(ar1),
+      _ar2_norm: normalizeArabic(ar2),
+      _ru_norm: normalizeRussian(ru + (gloss ? ` (${gloss})` : ""))
     });
-    let added = 0;
-    for(const newWord of serverWords){
-      if(!existingByRawLine.has(newWord.rawLine)){
-        allWords.push(newWord);
-        orderQueue.push(newWord.rawLine);
-        existingByRawLine.add(newWord.rawLine);
-        added++;
-      }
+  }
+  return parsed;
+}
+
+/* ===== app state ===== */
+const qEl = document.getElementById("q");
+const resultsEl = document.getElementById("results");
+const countEl = document.getElementById("count");
+const modalEl = document.getElementById("modal");
+const notifyEl = document.getElementById("notify");
+const showMoreWrap = document.getElementById("showMoreWrap");
+const showMoreBtn = document.getElementById("showMoreBtn");
+const statusHint = document.getElementById("statusHint");
+
+let entries = [];          // full parsed data
+let lastQuery = "";        // last processed query (for cache)
+let lastResults = [];      // last results array
+let renderLimit = 200;     // how many items to render initially
+let currentRenderCount = 0;
+
+/* ===== rendering ===== */
+function renderListPartial(list, limit = renderLimit) {
+  // Efficient rendering using DocumentFragment
+  resultsEl.innerHTML = "";
+  const frag = document.createDocumentFragment();
+  const count = Math.min(list.length, limit);
+  for (let i = 0; i < count; i++) {
+    const r = list[i];
+    const showAr2 = r.ar2 && (r._ar1_norm !== r._ar2_norm);
+    const li = document.createElement("li");
+    li.className = "item";
+    li.tabIndex = 0;
+    li.innerHTML = `<div>
+                      <div class="ru">${escapeHtml(r.ru)}${r.gloss ? ' <small>(' + escapeHtml(r.gloss) + ')</small>' : ''}</div>
+                      <div class="ar">${escapeHtml(r.ar1)}${showAr2 ? ' — ' + escapeHtml(r.ar2) : ''}</div>
+                    </div>
+                    <div style="font-size:13px;color:#64748b">Подробнее →</div>`;
+    li.addEventListener("click", () => openModal(r));
+    frag.appendChild(li);
+  }
+  resultsEl.appendChild(frag);
+  currentRenderCount = count;
+  countEl.textContent = "Найдено: " + list.length;
+  if (list.length > count) {
+    showMoreWrap.style.display = "block";
+  } else {
+    showMoreWrap.style.display = "none";
+  }
+}
+
+function appendMore(list, add = renderLimit) {
+  const start = currentRenderCount;
+  const end = Math.min(list.length, currentRenderCount + add);
+  const frag = document.createDocumentFragment();
+  for (let i = start; i < end; i++) {
+    const r = list[i];
+    const showAr2 = r.ar2 && (r._ar1_norm !== r._ar2_norm);
+    const li = document.createElement("li");
+    li.className = "item";
+    li.tabIndex = 0;
+    li.innerHTML = `<div>
+                      <div class="ru">${escapeHtml(r.ru)}${r.gloss ? ' <small>(' + escapeHtml(r.gloss) + ')</small>' : ''}</div>
+                      <div class="ar">${escapeHtml(r.ar1)}${showAr2 ? ' — ' + escapeHtml(r.ar2) : ''}</div>
+                    </div>
+                    <div style="font-size:13px;color:#64748b">Подробнее →</div>`;
+    li.addEventListener("click", () => openModal(r));
+    frag.appendChild(li);
+  }
+  resultsEl.appendChild(frag);
+  currentRenderCount = end;
+  if (currentRenderCount >= list.length) showMoreWrap.style.display = "none";
+}
+
+/* ===== search logic (fast) ===== */
+function performSearch(q) {
+  const qq = q.trim();
+  if (qq === lastQuery) return lastResults; // cache hit
+  lastQuery = qq;
+  if (!qq) {
+    lastResults = entries.slice();
+    return lastResults;
+  }
+
+  const qRu = normalizeRussian(qq);
+  const qAr = normalizeArabic(qq);
+  const res = [];
+
+  const useCyr = isCyrillic(qq);
+
+  // loop entries — optimized: simple checks and pushing
+  for (let i = 0; i < entries.length; i++) {
+    const e = entries[i];
+    if (useCyr) {
+      if (e._ru_norm.includes(qRu)) res.push(e);
+      continue;
     }
-    if(added) {
-      shuffle(orderQueue);
-      saveState();
-      updateStats();
-      alert('Добавлено новых слов: ' + added);
-    } else {
-      alert('Новых слов не найдено');
+    if (qAr && (e._ar1_norm.includes(qAr) || e._ar2_norm.includes(qAr))) {
+      res.push(e);
+      continue;
     }
-  }catch(e){ alert('Ошибка: '+e.message); }
-});
-/* ---------- Сброс прогресса с подтверждением ---------- */
-function showResetModal() {
-  closeModal();
-  const overlay = document.createElement('div'); overlay.className = 'overlay';
-  const modal = document.createElement('div'); modal.className = 'modal';
-  modal.innerHTML = `
-    <div><strong>Подтверждение сброса</strong></div>
-    <div style="margin-top:12px">Вы уверены? Все выученные слова и прогресс будут потеряны. Это действие нельзя отменить.</div>
-    <div style="text-align:right;margin-top:16px">
-      <button id="modal-cancel" style="margin-right:8px">Отмена</button>
-      <button id="modal-confirm" class="btn-danger">Да, сбросить</button>
+    if (e._ru_norm.includes(qRu)) {
+      res.push(e);
+      continue;
+    }
+    // also allow direct substring match on original fields (for diacritics)
+    if ((e.ar1 && e.ar1.includes(qq)) || (e.ar2 && e.ar2.includes(qq))) {
+      res.push(e);
+    }
+  }
+
+  lastResults = res;
+  return res;
+}
+
+/* ===== modal & copy notify ===== */
+function openModal(item) {
+  modalEl.style.display = "block";
+  const showAr2 = item.ar2 && (item._ar1_norm !== item._ar2_norm);
+  modalEl.innerHTML = `<div class="modal" id="modalWrap">
+    <div class="card" role="dialog" aria-modal="true">
+      <button id="closeBtn" style="float:right" class="btn">Закрыть</button>
+      <h2 style="margin-top:4px">${escapeHtml(item.ru)} ${item.gloss ? '(' + escapeHtml(item.gloss) + ')' : ''}</h2>
+      <div style="margin-top:8px">Арабский: <div class="ar">${escapeHtml(item.ar1)}</div></div>
+      ${showAr2 ? `<div style="margin-top:8px">Арабский (вариант): <div class="ar">${escapeHtml(item.ar2)}</div></div>` : ''}
+      ${item.note ? '<div class="note">Примечание: ' + escapeHtml(item.note) + '</div>' : ''}
+      <div style="margin-top:12px">
+        <button id="copyBtn" class="btn">Копировать</button>
+        <button id="searchArBtn" class="btn">Поиск по арабскому</button>
+      </div>
     </div>
-  `;
-  overlay.appendChild(modal);
-  modalRoot.appendChild(overlay);
-  function cleanup() {
-    document.removeEventListener('keydown', onKey);
-    overlay.removeEventListener('click', onOverlay);
-    const cancelBtn = document.getElementById('modal-cancel');
-    const confirmBtn = document.getElementById('modal-confirm');
-    if (cancelBtn) cancelBtn.removeEventListener('click', onCancel);
-    if (confirmBtn) confirmBtn.removeEventListener('click', onConfirm);
-    if(overlay.parentNode) overlay.parentNode.removeChild(overlay);
-  }
-  function onKey(e) { if (e.key === 'Escape') onCancel(); }
-  function onOverlay(e) { if (e.target === overlay) onCancel(); }
-  function onCancel() { cleanup(); }
-  function onConfirm() {
-    cleanup();
-    clearState();
-    orderQueue = allWords.map(w=>w.rawLine); shuffle(orderQueue);
-    masteredFinal = []; practiceHistory = []; roundMastered = []; practiceAccum = []; practiceOrder = []; phase='learn'; currentRaw=null;
-    screenMain.classList.add('hidden'); screenDua.classList.remove('hidden');
-    updateStats();
-    showMessage('Прогресс сброшен.');
-  }
-  document.addEventListener('keydown', onKey);
-  overlay.addEventListener('click', onOverlay);
-  document.getElementById('modal-cancel').addEventListener('click', onCancel);
-  document.getElementById('modal-confirm').addEventListener('click', onConfirm);
+  </div>`;
+  document.getElementById("closeBtn").addEventListener("click", closeModal);
+  document.getElementById("copyBtn").addEventListener("click", async () => {
+    const txt = `${item.ru}${item.gloss ? ' (' + item.gloss + ')' : ''} - ${item.ar1}` + (showAr2 ? ` - ${item.ar2}` : '');
+    try { await navigator.clipboard.writeText(txt); showTemporaryNotify("Скопировано"); } catch(e) { showTemporaryNotify("Не удалось скопировать"); }
+  });
+  document.getElementById("searchArBtn").addEventListener("click", () => {
+    qEl.value = item.ar1;
+    qEl.dispatchEvent(new Event("input", { bubbles:true }));
+    closeModal();
+  });
+  modalEl.addEventListener("click", (ev) => { if (ev.target.id === "modalWrap") closeModal(); });
 }
-btnReset.addEventListener('click', showResetModal);
-/* ---------- "Я сделал дуа" ---------- */
-btnDoneDua.addEventListener('click', async ()=>{
-  screenDua.classList.add('hidden');
-  screenMain.classList.remove('hidden');
-  if(!allWords.length){
-    try{
-      await initDictionary();
-    }catch(e){
-      console.warn('initDictionary failed:', e);
-      showMessage('Не удалось загрузить список слов — проверьте подключение. Продолжаем работу.');
-    }
+function closeModal() { modalEl.style.display = "none"; modalEl.innerHTML = ""; }
+function showTemporaryNotify(text) {
+  notifyEl.textContent = text;
+  notifyEl.style.display = "block";
+  setTimeout(() => { notifyEl.style.display = "none"; }, 1500);
+}
+
+/* ===== loading and init ===== */
+async function loadFromServer() {
+  try {
+    const res = await fetch("words.txt", { cache: "no-store" });
+    if (!res.ok) throw new Error("not found");
+    const txt = await res.text();
+    entries = parseWordText(txt);
+    // initial render
+    lastQuery = "";
+    lastResults = entries.slice();
+    renderListPartial(lastResults);
+    statusHint.style.display = "none";
+  } catch (e) {
+    console.warn("Не удалось загрузить words.txt:", e);
+    statusHint.textContent = "Не удалось загрузить words.txt — загружены примеры.";
+    statusHint.style.display = "block";
+    const fallback = [
+      "дом(house) - بَيْت - بيت",
+      "писать(to write) - كَتَبَ - كتب",
+      "кот|cat|قِطّ|قط|животное"
+    ].join("\n");
+    entries = parseWordText(fallback);
+    lastQuery = "";
+    lastResults = entries.slice();
+    renderListPartial(lastResults);
   }
-  if(phase==='practice' && practiceOrder && practiceOrder.length){
-    learnControls.classList.add('hidden');
-    practiceArea.classList.remove('hidden');
-    showNextPractice();
-  } else {
-    practiceArea.classList.add('hidden');
-    learnControls.classList.remove('hidden');
-    if(currentRaw){
-      const o = allWords.find(w=>w.rawLine===currentRaw);
-      arabicDiv.textContent = (o && (o.arabFull || o.arabParts.join(' - ')))||currentRaw;
-    } else {
-      showNextLearn();
-    }
+}
+
+/* ===== events ===== */
+const doSearchDebounced = debounce(() => {
+  const list = performSearch(qEl.value);
+  // render first page
+  renderListPartial(list);
+  // scroll results to top for better UX
+  if (resultsEl) resultsEl.scrollTop = 0;
+}, 200);
+
+qEl.addEventListener("input", (ev) => {
+  doSearchDebounced();
+});
+
+// show more handler
+showMoreBtn.addEventListener("click", () => {
+  const list = lastResults;
+  appendMore(list, renderLimit); // append next chunk
+});
+
+// keyboard: Enter focuses first result (useful when many results)
+qEl.addEventListener("keydown", (ev) => {
+  if (ev.key === "Enter") {
+    const first = resultsEl.querySelector(".item");
+    if (first) first.focus();
   }
 });
-/* ---------- init ---------- */
-(async function bootstrap(){
-  try{ await initDictionary(); screenDua.classList.remove('hidden'); screenMain.classList.add('hidden'); }catch(e){ console.error(e); }
-})();
-window.addEventListener('beforeunload', saveState);
-window.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='hidden') saveState(); });
-/* ---------- Modal helper ---------- */
-function closeModal(){ modalRoot.innerHTML=''; if(modalTimer){ clearTimeout(modalTimer); modalTimer=null; } }
-</script></body>
+
+// init
+loadFromServer();
+</script>
+</body>
 </html>
